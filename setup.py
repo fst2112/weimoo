@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='weimoo',
-    version='1.0.0',
+    version='1.0.1',
     license='MIT',
     description='Small package containing implementations and interfaces for weight-based multi-objective optimization approaches',
     author='Nicolai Palm',
@@ -24,6 +24,11 @@ setup(
         'torch',
         'matplotlib',
         'tqdm',
+        'dill',
+        'pandas',
+        'scikit-learn',
+        'scikit-optimize',
+        'pyDOE',
     ],
 
 )

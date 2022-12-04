@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+import dill as pickle
 
 
 class ExactGP0(gpytorch.models.ExactGP):
@@ -13,7 +14,7 @@ class ExactGP0(gpytorch.models.ExactGP):
     def __init__(self, train_x: torch.Tensor, train_y: torch.Tensor, likelihood):
         super(ExactGP0, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel()) # Hier kernel ersetzen
 
     def forward(self, x) -> gpytorch.distributions.MultivariateNormal:
         mean_x = self.mean_module(x)
@@ -161,6 +162,16 @@ class Gpr0Torch:
         return True
 
 
+def load_model(model_path: str):
+    """
+    Load a model from a .model file.
+    :param model_path: str: path to the model file
+    """
+    with open(model_path, 'rb') as inp:
+        model = pickle.load(inp)
+    return model
+
+
 class GPR:
     def __init__(self, training_iter: int = 1000, learning_rate=0.1):
         self._models = None
@@ -217,14 +228,26 @@ class GPR:
 
         return True
 
+    def save_model(self, model_name: str = 'surrogate') -> bool:
+        """
+        Save the model to a .model file.
+        :param model_name: str: name of the model
+        """
+        model_name = model_name + '.model'
+        with open(model_name, 'wb') as outp:  # Overwrites any existing file.
+            pickle.dump(self._models, outp, pickle.HIGHEST_PROTOCOL)
+        return True
+
     def __call__(self, x: np.ndarray) -> np.ndarray:
         x = torch.Tensor([x.tolist()])
         return np.array(
-            [model.predict_torch(x).mean.numpy()[0] for model in self._models]
+            [model.predict_torch(x).mean.detach().numpy()[0] for model in self._models]
         ).T
 
     def std(self, x: np.ndarray) -> np.ndarray:
         x = torch.Tensor([x.tolist()])
         return np.array(
-            [model.predict_torch(x).stddev.numpy()[0] for model in self._models]
+            [model.predict_torch(x).stddev.detach().numpy()[0] for model in self._models]
         ).T
+
+
