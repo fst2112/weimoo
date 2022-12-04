@@ -162,6 +162,18 @@ class Gpr0Torch:
         return True
 
 
+def save_model(model, model_name: str = 'surrogate') -> bool:
+    """
+    Save the model to a .model file.
+    :param model: The model to be saved.
+    :param model_name: str: name of the model
+    """
+    model_name = model_name + '.model'
+    with open(model_name, 'wb') as outp:  # Overwrites any existing file.
+        pickle.dump(model, outp, pickle.HIGHEST_PROTOCOL)
+    return True
+
+
 def load_model(model_path: str):
     """
     Load a model from a .model file.
@@ -226,16 +238,6 @@ class GPR:
 
         self._models = models
 
-        return True
-
-    def save_model(self, model_name: str = 'surrogate') -> bool:
-        """
-        Save the model to a .model file.
-        :param model_name: str: name of the model
-        """
-        model_name = model_name + '.model'
-        with open(model_name, 'wb') as outp:  # Overwrites any existing file.
-            pickle.dump(self._models, outp, pickle.HIGHEST_PROTOCOL)
         return True
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
