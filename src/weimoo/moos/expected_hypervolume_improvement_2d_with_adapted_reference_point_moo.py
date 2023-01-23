@@ -3,6 +3,8 @@ import torch
 from scipy.stats import qmc
 from tqdm import tqdm
 
+import dill
+
 from weimoo.moos.helper_functions.ehvi_2d import ehvi_2d
 from weimoo.moos.helper_functions.return_pareto_front_2d import (
     return_pareto_front_2d,
@@ -17,6 +19,7 @@ class EHVI2dAdaptedReferencePointMOO:
         self,
         function: Function,
         minimizer: Minimizer,
+        minimizer_workers: int,
         upper_bounds: np.ndarray,
         lower_bounds: np.ndarray,
         number_designs_LH: int,
@@ -48,10 +51,13 @@ class EHVI2dAdaptedReferencePointMOO:
             print(f"\n Calculating maxima of components...\n")
             maxima = []
             for model in tqdm(gpr._models):
+                # fun = dill.dump(lambda x: -model.predict_torch(
+                #         torch.Tensor([x.tolist()])
+                #     ).mean.numpy()[0], open('dillfile', 'wb'))
                 x = minimizer(
-                    function=lambda x: -model.predict_torch(
-                        torch.Tensor([x.tolist()])
-                    ).mean.numpy()[0],
+                    function=Minimizer.get_torch_prediction,
+                    minimizer_workers=minimizer_workers,
+                    fcn_args=model,
                     max_iter=max_iter_minimizer,
                     upper_bounds=upper_bounds,
                     lower_bounds=lower_bounds,
@@ -71,13 +77,15 @@ class EHVI2dAdaptedReferencePointMOO:
 
             print(f"\nStarting minimization...")
             pf = return_pareto_front_2d(evaluations)
-            res = minimizer(
-                function=lambda x: -ehvi_2d(
+            fun = dill.dump(lambda x: -ehvi_2d(
                     pf, max * np.ones(len(maxima)), (gpr(x)), (gpr.std(x))
-                ),
+                ), open('dillfile', 'wb'))
+            res = minimizer(
+                function=fun,
+                minimizer_workers=minimizer_workers,
                 max_iter=max_iter_minimizer,
                 upper_bounds=upper_bounds,
-                lower_bounds=lower_bounds,
+                lower_bounds=lower_bounds
             )
 
             train_x = np.append(train_x, res.reshape(1, train_x.shape[1]), axis=0)

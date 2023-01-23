@@ -1,3 +1,5 @@
+from multiprocessing import freeze_support
+
 import numpy as np
 import plotly.graph_objects as go
 from pymoo.factory import get_problem
@@ -12,74 +14,77 @@ from weimoo.moos.helper_functions.return_pareto_front_2d import (
 from weimoo.interfaces.function import Function
 from weimoo.minimizers.differential_evolution import DifferentialEvolution
 
-input_dimensions = 5
-output_dimensions = 2
+if __name__ == '__main__':
+    freeze_support()
+    input_dimensions = 5
+    output_dimensions = 2
 
-lower_bounds_x = np.zeros(input_dimensions)
-upper_bounds_x = np.ones(input_dimensions)
+    lower_bounds_x = np.zeros(input_dimensions)
+    upper_bounds_x = np.ones(input_dimensions)
 
-minimizer = DifferentialEvolution()
+    minimizer = DifferentialEvolution()
 
-max_iter_minimizer = 100
-max_evaluations = 50
+    max_iter_minimizer = 100
+    max_evaluations = 50
 
-problem = get_problem("zdt1", n_var=input_dimensions)
-
-
-class ExampleFunction(Function):
-    def __call__(self, x):
-        self._evaluations.append([x, problem.evaluate(x)])
-        return problem.evaluate(x)
+    problem = get_problem("zdt1", n_var=input_dimensions)
 
 
-# Initialiaze the function
-function = ExampleFunction()
+    class ExampleFunction(Function):
+        def __call__(self, x):
+            self._evaluations.append([x, problem.evaluate(x)])
+            return problem.evaluate(x)
 
 
-MOO = EHVI2dAdaptedReferencePointMOO()
-
-result = MOO(
-    function=function,
-    minimizer=minimizer,
-    upper_bounds=upper_bounds_x,
-    lower_bounds=lower_bounds_x,
-    number_designs_LH=40,
-    max_evaluations=max_evaluations,
-    max_iter_minimizer=100,
-    training_iter=5000,
-)
+    # Initialiaze the function
+    function = ExampleFunction()
 
 
-real_PF = problem.pareto_front()
+    MOO = EHVI2dAdaptedReferencePointMOO()
 
-PF = return_pareto_front_2d([point[1] for point in function.evaluations])
+    result = MOO(
+        function=function,
+        minimizer=minimizer,
+        minimizer_workers=2,
+        upper_bounds=upper_bounds_x,
+        lower_bounds=lower_bounds_x,
+        number_designs_LH=40,
+        max_evaluations=max_evaluations,
+        max_iter_minimizer=100,
+        training_iter=1000,
+    )
 
 
-# reference point according to paper
-reference_point = np.array([10, 10])
+    real_PF = problem.pareto_front()
 
-metric = Hypervolume(ref_point=reference_point, normalize=False)
+    PF = return_pareto_front_2d([point[1] for point in function.evaluations])
 
-hypervolume_max = metric.do(problem.pareto_front())
-hypervolume_weight = metric.do(PF)
 
-print(hypervolume_weight / hypervolume_max)
+    # reference point according to paper
+    reference_point = np.array([10, 10])
 
-y = np.array([evaluation[1] for evaluation in function.evaluations])
+    metric = Hypervolume(ref_point=reference_point, normalize=False)
 
-data = [
-    go.Scatter(x=real_PF.T[0], y=real_PF.T[1], mode="markers"),
-    go.Scatter(x=y.T[0], y=y.T[1], mode="markers"),
-    go.Scatter(x=PF.T[0], y=PF.T[1], mode="markers"),
-]
+    hypervolume_max = metric.do(problem.pareto_front())
+    hypervolume_weight = metric.do(PF)
 
-fig1 = go.Figure(data=data)
+    print(hypervolume_weight / hypervolume_max)
 
-fig1.update_layout(
-    width=800,
-    height=600,
-    plot_bgcolor="rgba(0,0,0,0)",
-    title=f"({input_dimensions}-dim) EHVI w/ adapted ref point GPR MOO: relative Hypervolume: {hypervolume_weight / hypervolume_max * 100}%",
-)
+    y = np.array([evaluation[1] for evaluation in function.evaluations])
 
-fig1.show()
+    data = [
+        go.Scatter(x=real_PF.T[0], y=real_PF.T[1], mode="markers"),
+        go.Scatter(x=y.T[0], y=y.T[1], mode="markers"),
+        go.Scatter(x=PF.T[0], y=PF.T[1], mode="markers"),
+    ]
+
+    fig1 = go.Figure(data=data)
+
+    fig1.update_layout(
+        width=800,
+        height=600,
+        plot_bgcolor="rgba(0,0,0,0)",
+        title=f"({input_dimensions}-dim) EHVI w/ adapted ref point GPR MOO: relative Hypervolume: {hypervolume_weight / hypervolume_max * 100}%",
+    )
+
+    fig1.show()
