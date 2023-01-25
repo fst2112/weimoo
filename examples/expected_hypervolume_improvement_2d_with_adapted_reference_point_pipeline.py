@@ -36,9 +36,8 @@ if __name__ == '__main__':
             return problem.evaluate(x)
 
 
-    # Initialiaze the function
+    # Initialize the function
     function = ExampleFunction()
-
 
     MOO = EHVI2dAdaptedReferencePointMOO()
 
@@ -51,14 +50,12 @@ if __name__ == '__main__':
         number_designs_LH=40,
         max_evaluations=max_evaluations,
         max_iter_minimizer=100,
-        training_iter=1000,
+        training_iter=5000,
     )
-
 
     real_PF = problem.pareto_front()
 
     PF = return_pareto_front_2d([point[1] for point in function.evaluations])
-
 
     # reference point according to paper
     reference_point = np.array([10, 10])
@@ -84,7 +81,8 @@ if __name__ == '__main__':
         width=800,
         height=600,
         plot_bgcolor="rgba(0,0,0,0)",
-        title=f"({input_dimensions}-dim) EHVI w/ adapted ref point GPR MOO: relative Hypervolume: {hypervolume_weight / hypervolume_max * 100}%",
+        title=f"({input_dimensions}-dim) EHVI w/ adapted ref point GPR MOO: relative Hypervolume: "
+              f"{hypervolume_weight / hypervolume_max * 100}%"
     )
 
     fig1.show()

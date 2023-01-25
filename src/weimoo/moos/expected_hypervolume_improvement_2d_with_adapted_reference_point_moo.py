@@ -3,31 +3,29 @@ import torch
 from scipy.stats import qmc
 from tqdm import tqdm
 
-import dill
-
+from weimoo.interfaces.function import Function
+from weimoo.interfaces.minimizer import Minimizer, get_torch_prediction, minimizer_objective_fun
 from weimoo.moos.helper_functions.ehvi_2d import ehvi_2d
 from weimoo.moos.helper_functions.return_pareto_front_2d import (
     return_pareto_front_2d,
 )
-from weimoo.interfaces.function import Function
-from weimoo.interfaces.minimizer import Minimizer
 from weimoo.surrogates.gpr import GPR
 
 
 class EHVI2dAdaptedReferencePointMOO:
     def __call__(
-        self,
-        function: Function,
-        minimizer: Minimizer,
-        minimizer_workers: int,
-        upper_bounds: np.ndarray,
-        lower_bounds: np.ndarray,
-        number_designs_LH: int,
-        max_evaluations: int,
-        max_iter_minimizer: 1000,
-        training_iter: int = 1000,
-        learning_rate=0.01,
-        tolerance_reference_point: float = 1e-3,
+            self,
+            function: Function,
+            minimizer: Minimizer,
+            minimizer_workers: int,
+            upper_bounds: np.ndarray,
+            lower_bounds: np.ndarray,
+            number_designs_LH: int,
+            max_evaluations: int,
+            max_iter_minimizer: 1000,
+            training_iter: int = 1000,
+            learning_rate=0.01,
+            tolerance_reference_point: float = 1e-3,
     ) -> np.ndarray:
         function.clear_evaluations()
         # Setting up a LH for the seed
@@ -51,13 +49,10 @@ class EHVI2dAdaptedReferencePointMOO:
             print(f"\n Calculating maxima of components...\n")
             maxima = []
             for model in tqdm(gpr._models):
-                # fun = dill.dump(lambda x: -model.predict_torch(
-                #         torch.Tensor([x.tolist()])
-                #     ).mean.numpy()[0], open('dillfile', 'wb'))
                 x = minimizer(
-                    function=Minimizer.get_torch_prediction,
+                    function=get_torch_prediction,
                     minimizer_workers=minimizer_workers,
-                    fcn_args=model,
+                    fcn_args=(model,),
                     max_iter=max_iter_minimizer,
                     upper_bounds=upper_bounds,
                     lower_bounds=lower_bounds,
@@ -77,12 +72,17 @@ class EHVI2dAdaptedReferencePointMOO:
 
             print(f"\nStarting minimization...")
             pf = return_pareto_front_2d(evaluations)
-            fun = dill.dump(lambda x: -ehvi_2d(
-                    pf, max * np.ones(len(maxima)), (gpr(x)), (gpr.std(x))
-                ), open('dillfile', 'wb'))
+
+            sub_models = [m._model for m in gpr._models]
+            sub_hoods = [m._likelihood for m in gpr._models]
+
+            for m, h in zip(sub_models, sub_hoods):
+                m.eval()
+                h.eval()
             res = minimizer(
-                function=fun,
+                function=minimizer_objective_fun,
                 minimizer_workers=minimizer_workers,
+                fcn_args=(ehvi_2d, pf, max, maxima, sub_hoods),
                 max_iter=max_iter_minimizer,
                 upper_bounds=upper_bounds,
                 lower_bounds=lower_bounds

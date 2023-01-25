@@ -1,7 +1,6 @@
 from typing import Callable
 
 import numpy as np
-import torch
 from scipy.optimize import differential_evolution
 
 from weimoo.interfaces.minimizer import Minimizer
@@ -13,24 +12,15 @@ class DifferentialEvolution(Minimizer):
         self._number_evaluations_last_call = None
 
     def __call__(
-        self,
-        function: Callable,
-        minimizer_workers: int,
-        fcn_args: tuple,
-        upper_bounds: np.ndarray,
-        lower_bounds: np.ndarray,
-        max_iter: int = 1000,
+            self,
+            function: Callable,
+            upper_bounds: np.ndarray,
+            lower_bounds: np.ndarray,
+            max_iter: int = 1000,
+            fcn_args: tuple = None,
+            minimizer_workers: int = 1,
     ) -> np.ndarray:
         t_initial = (upper_bounds + lower_bounds) / 2
-        # print(f'{fcn_args=}')
-        #
-        # fun = lambda x: -fcn_args.predict_torch(torch.Tensor([x.tolist()])).mean.numpy()[0]
-        #
-        # print(f'{fun(t_initial)=}')
-        #
-        # print(f'{t_initial=}')
-        # print(f'{function=}')
-        # print(f'{function(t_initial, fcn_args)=}')
 
         res = differential_evolution(
             func=function,
